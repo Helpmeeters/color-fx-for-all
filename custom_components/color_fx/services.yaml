@@ -1,0 +1,53 @@
+start:
+  name: Start Color FX
+  description: Starts the color animation loop for the targeted zone or switch.
+  fields:
+    entity_id:
+      name: Target Entity
+      description: The Color FX switch or light to start.
+      selector:
+        entity:
+          domain: switch
+    sequence:
+      name: Sequence
+      description: Optional sequence name to play.
+      selector:
+        text:
+
+stop:
+  name: Stop Color FX
+  description: Stops the color animation loop and restores normal light state.
+  fields:
+    entity_id:
+      name: Target Entity
+      description: The Color FX switch to stop.
+      selector:
+        entity:
+          domain: switch
+
+next_sequence:
+  name: Next Sequence
+  description: Cycles to the next color sequence in the playlist.
+  fields:
+    entity_id:
+      name: Target Entity
+      description: The Color FX switch to cycle.
+      selector:
+        entity:
+          domain: switch
+
+set_sequence:
+  name: Set Sequence
+  description: Sets the active color sequence.
+  fields:
+    entity_id:
+      name: Target Entity
+      selector:
+        entity:
+          domain: switch
+    sequence:
+      name: Sequence
+      description: Name of the sequence to activate.
+      required: true
+      selector:
+        text:

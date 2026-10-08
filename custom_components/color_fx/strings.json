@@ -1,0 +1,31 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add Color FX Zone",
+        "description": "Configure a light group or room to run dynamic color sequence animations.",
+        "data": {
+          "name": "Zone Name",
+          "target_light": "Target Light or Group",
+          "sequence": "Default Sequence",
+          "interval": "Step Interval (seconds)",
+          "transition": "Transition Speed (seconds)",
+          "restore_state": "Restore lighting on stop"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Color FX Zone Options",
+        "data": {
+          "sequence": "Active Sequence",
+          "interval": "Step Interval (seconds)",
+          "transition": "Transition Speed (seconds)",
+          "restore_state": "Restore lighting on stop"
+        }
+      }
+    }
+  }
+}
