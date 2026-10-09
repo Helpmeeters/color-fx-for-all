@@ -1,13 +1,12 @@
 """Services for Color FX for All."""
 
 import logging
-from typing import Any
 
 import voluptuous as vol
 
 from homeassistant.const import ATTR_ENTITY_ID
 from homeassistant.core import HomeAssistant, ServiceCall, callback
-from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import config_validation as cv, entity_registry as er
 
 from .const import (
     CONF_SEQUENCE,
@@ -48,9 +47,7 @@ NEXT_SEQUENCE_SCHEMA = vol.Schema(
 )
 
 
-def _get_coordinators_for_call(
-    hass: HomeAssistant, call: ServiceCall
-) -> list[ColorFXCoordinator]:
+def _get_coordinators_for_call(hass: HomeAssistant, call: ServiceCall) -> list[ColorFXCoordinator]:
     """Find matching coordinators based on targeted entity_id or return all."""
     coordinators_map: dict[str, ColorFXCoordinator] = hass.data.get(DOMAIN, {}).get(
         "coordinators", {}
@@ -61,18 +58,22 @@ def _get_coordinators_for_call(
     if not entity_ids:
         return all_coords
 
-    matched = []
     if isinstance(entity_ids, str):
         entity_ids = [entity_ids]
 
-    for coord in all_coords:
-        # Match by target_light entity_id, or by generated switch entity_id
-        for target in entity_ids:
-            if target == coord.target_light or coord.name.lower() in target.lower():
-                matched.append(coord)
-                break
+    registry = er.async_get(hass)
+    entry_ids = set()
+    for entity_id in entity_ids:
+        entity = registry.async_get(entity_id)
+        if entity and entity.platform == DOMAIN:
+            entry_ids.add(entity.config_entry_id)
 
-    return matched or all_coords
+    return [
+        coord
+        for coord in all_coords
+        if coord.entry_id in entry_ids
+        or any(target in coord.target_lights for target in entity_ids)
+    ]
 
 
 async def async_handle_start(hass: HomeAssistant, call: ServiceCall) -> None:
@@ -122,6 +123,4 @@ def async_setup_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN, SERVICE_NEXT_SEQUENCE, _next_seq, schema=NEXT_SEQUENCE_SCHEMA
     )
-    hass.services.async_register(
-        DOMAIN, SERVICE_SET_SEQUENCE, _set_seq, schema=SET_SEQUENCE_SCHEMA
-    )
+    hass.services.async_register(DOMAIN, SERVICE_SET_SEQUENCE, _set_seq, schema=SET_SEQUENCE_SCHEMA)

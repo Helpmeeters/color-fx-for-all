@@ -1,12 +1,14 @@
 {
   "domain": "color_fx",
   "name": "Helpmeet: Color FX for All",
+  "after_dependencies": ["media_player"],
   "codeowners": ["@andrewreutter"],
   "config_flow": true,
+  "dependencies": ["frontend", "http"],
   "documentation": "https://github.com/Helpmeeters/color-fx-for-all",
   "integration_type": "hub",
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/Helpmeeters/color-fx-for-all/issues",
   "requirements": [],
-  "version": "0.1.0"
+  "version": "0.5.0"
 }

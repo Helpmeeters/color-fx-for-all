@@ -1,14 +1,31 @@
 [project]
 name = "color-fx-for-all"
-version = "0.1.0"
+version = "0.5.0"
 description = "Dynamic multi-sequence color effects for Home Assistant light groups."
 readme = "README.md"
 requires-python = ">=3.14"
 authors = [
-  { name = "Helpmeeters" }
+  { name = "Andrew Reutter" }
 ]
 license = { text = "MIT" }
+
+[dependency-groups]
+test = [
+  "pytest-homeassistant-custom-component",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
 
 [tool.ruff]
 target-version = "py314"
 line-length = 100
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "UP", "W"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+force-sort-within-sections = true
+known-first-party = ["homeassistant"]

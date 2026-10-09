@@ -1,0 +1,8 @@
+{
+  "services": {
+    "start": {"service": "mdi:play"},
+    "stop": {"service": "mdi:stop"},
+    "next_sequence": {"service": "mdi:skip-next"},
+    "set_sequence": {"service": "mdi:palette-swatch"}
+  }
+}

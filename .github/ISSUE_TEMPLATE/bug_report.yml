@@ -1,0 +1,72 @@
+name: Bug report
+description: Lights don't animate, restore, or follow Media Art the way they should.
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected the lights to do, and what they did instead.
+    validations:
+      required: true
+  - type: input
+    id: ha-version
+    attributes:
+      label: Home Assistant version
+      description: From **Settings > About**.
+      placeholder: "2026.9.2"
+    validations:
+      required: true
+  - type: dropdown
+    id: channel
+    attributes:
+      label: Release channel
+      options:
+        - Stable
+        - Beta
+        - Dev
+    validations:
+      required: true
+  - type: input
+    id: integration-version
+    attributes:
+      label: Color FX for All version
+      placeholder: "0.5.0"
+    validations:
+      required: true
+  - type: input
+    id: lights
+    attributes:
+      label: Lights
+      description: The integration and model of the lights involved, and whether you targeted a light group.
+      placeholder: "Hue (via Hue bridge), light group of 4 bulbs"
+    validations:
+      required: true
+  - type: dropdown
+    id: sequence
+    attributes:
+      label: Sequence
+      options:
+        - A built-in sequence
+        - Media Art
+    validations:
+      required: true
+  - type: input
+    id: media-player
+    attributes:
+      label: Media player, for Media Art
+      description: The integration and app that was playing, such as "Sonos, Spotify" or "Apple TV, Netflix".
+  - type: textarea
+    id: hub-attributes
+    attributes:
+      label: Hub switch attributes
+      description: >
+        From **Developer tools > States**, the attributes of the hub's `switch.color_fx_…` entity
+        (sequence, palette, palette source, rotation settings).
+      render: yaml
+  - type: textarea
+    id: logs
+    attributes:
+      label: Debug log
+      description: Turn on debug logging (see the README), reproduce the problem, and paste the Color FX lines.
+      render: text

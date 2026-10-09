@@ -20,6 +20,7 @@ from homeassistant.const import (
     STATE_ON,
 )
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import ServiceValidationError
 
 from .const import (
     BUILTIN_SEQUENCES,
@@ -27,7 +28,10 @@ from .const import (
     DEFAULT_SEQUENCE,
     DEFAULT_TRANSITION,
     DOMAIN,
+    MEDIA_ART_SEQUENCE,
+    RENAMED_SEQUENCES,
 )
+from .media_art import MediaArtTracker
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,54 +39,75 @@ COLOR_MODES = {"xy", "rgb", "hs", "rgbw", "rgbww", "color_temp"}
 
 
 class ColorFXCoordinator:
-    """Controls the background sequence loop for a single Color FX zone."""
+    """Controls the background sequence loop for a single Color FX hub."""
 
     def __init__(
         self,
         hass: HomeAssistant,
         entry_id: str,
         name: str,
-        target_light: str,
+        target_lights: list[str],
         initial_sequence: str = DEFAULT_SEQUENCE,
         interval: float = DEFAULT_INTERVAL,
         transition: float = DEFAULT_TRANSITION,
         restore_state: bool = True,
+        media_players: list[str] | None = None,
+        rotate: bool = True,
     ) -> None:
         """Initialize the coordinator."""
         self.hass = hass
         self.entry_id = entry_id
         self.name = name
-        self.target_light = target_light
+        self.target_lights = target_lights
+        initial_sequence = RENAMED_SEQUENCES.get(initial_sequence, initial_sequence)
         self.current_sequence = (
             initial_sequence if initial_sequence in self.available_sequences else DEFAULT_SEQUENCE
         )
         self.interval = float(interval)
         self.transition = float(transition)
         self.restore_state = restore_state
+        self.rotate = rotate
 
         self.is_running = False
         self._task: asyncio.Task[None] | None = None
         self._current_step = 0
         self._saved_states: dict[str, dict[str, Any]] = {}
         self._listeners: list[callback] = []
+        self._media_art = MediaArtTracker(hass, media_players or [], self._handle_media_art)
+
+    @property
+    def media_players(self) -> list[str]:
+        """Return the media players Media Art follows; empty means all of them."""
+        return self._media_art.players
 
     @property
     def available_sequences(self) -> list[str]:
-        """Return list of available sequence names (builtins + custom)."""
+        """Return list of available sequence names (builtins + Media Art + custom)."""
         custom = self.hass.data.get(DOMAIN, {}).get("custom_sequences", {})
-        combined = list(BUILTIN_SEQUENCES.keys())
+        combined = [*BUILTIN_SEQUENCES, MEDIA_ART_SEQUENCE]
         for name in custom:
             if name not in combined:
                 combined.append(name)
         return combined
 
     def get_palette(self, sequence_name: str | None = None) -> list[list[int]]:
-        """Return the list of RGB colors for a sequence."""
+        """Return the RGB colors the hub shows; only the first, most dominant, without rotation."""
         name = sequence_name or self.current_sequence
         custom = self.hass.data.get(DOMAIN, {}).get("custom_sequences", {})
         if name in custom:
-            return custom[name]
-        return BUILTIN_SEQUENCES.get(name, BUILTIN_SEQUENCES[DEFAULT_SEQUENCE])
+            palette = custom[name]
+        elif name == MEDIA_ART_SEQUENCE:
+            palette = self._media_art.palette
+        else:
+            palette = BUILTIN_SEQUENCES.get(name, BUILTIN_SEQUENCES[DEFAULT_SEQUENCE])
+        return palette if self.rotate else palette[:1]
+
+    @property
+    def palette_source(self) -> str | None:
+        """Return the media player supplying the palette, when following Media Art."""
+        if self.current_sequence != MEDIA_ART_SEQUENCE:
+            return None
+        return self._media_art.source
 
     def register_listener(self, update_callback: callback) -> callback:
         """Register a callback for state changes."""
@@ -95,25 +120,45 @@ class ColorFXCoordinator:
         return unregister
 
     def _notify_listeners(self) -> None:
-        """Notify all registered entity listeners."""
+        """Sync the Media Art subscription and notify all registered entity listeners."""
+        self.sync_media_art()
         for cb in self._listeners:
             try:
                 cb()
             except Exception as err:
                 _LOGGER.error("Error in ColorFX listener: %s", err)
 
+    def sync_media_art(self, enabled: bool = True) -> None:
+        """Follow media artwork whenever Media Art is selected, running or not."""
+        wants = enabled and self.current_sequence == MEDIA_ART_SEQUENCE
+        if wants and not self._media_art.active:
+            self._media_art.async_start()
+        elif not wants and self._media_art.active:
+            self._media_art.async_stop()
+
+    @callback
+    def _handle_media_art(self) -> None:
+        """Publish the new artwork palette and restart the animation from its first color."""
+        self._notify_listeners()
+        if not self.is_running:
+            return
+        self._current_step = 0
+        self.hass.async_create_task(self._apply_step())
+
     def _resolve_target_lights(self) -> list[str]:
         """Resolve member lights and filter to color-capable entities."""
-        state = self.hass.states.get(self.target_light)
-        if not state:
-            return []
+        candidates: list[str] = []
+        for target in self.target_lights:
+            state = self.hass.states.get(target)
+            if not state:
+                continue
 
-        # If it's a light group, expand member entities
-        member_ids = state.attributes.get(ATTR_ENTITY_ID)
-        candidates = member_ids if isinstance(member_ids, list) else [self.target_light]
+            # If it's a light group, expand member entities
+            member_ids = state.attributes.get(ATTR_ENTITY_ID)
+            candidates.extend(member_ids if isinstance(member_ids, list) else [target])
 
         color_lights: list[str] = []
-        for eid in candidates:
+        for eid in dict.fromkeys(candidates):
             st = self.hass.states.get(eid)
             if not st:
                 continue
@@ -184,6 +229,7 @@ class ColorFXCoordinator:
 
     async def async_start(self, sequence: str | None = None) -> None:
         """Start the Color FX animation loop."""
+        sequence = RENAMED_SEQUENCES.get(sequence, sequence)
         if sequence and sequence in self.available_sequences:
             self.current_sequence = sequence
 
@@ -193,7 +239,9 @@ class ColorFXCoordinator:
 
         target_bulbs = self._resolve_target_lights()
         if not target_bulbs:
-            _LOGGER.warning("No color-capable lights found for target %s", self.target_light)
+            _LOGGER.warning(
+                "No color-capable lights found for targets %s", ", ".join(self.target_lights)
+            )
             return
 
         self._snapshot_lights(target_bulbs)
@@ -245,8 +293,9 @@ class ColorFXCoordinator:
 
     async def async_set_sequence(self, sequence: str) -> None:
         """Set the active sequence."""
+        sequence = RENAMED_SEQUENCES.get(sequence, sequence)
         if sequence not in self.available_sequences:
-            raise ValueError(f"Unknown sequence: {sequence}")
+            raise ServiceValidationError(f"Unknown sequence: {sequence}")
 
         self.current_sequence = sequence
         self._current_step = 0
@@ -275,7 +324,9 @@ class ColorFXCoordinator:
                 {
                     ATTR_ENTITY_ID: target_bulbs,
                     ATTR_RGB_COLOR: color,
-                    ATTR_TRANSITION: min(self.transition, self.interval),
+                    ATTR_TRANSITION: (
+                        min(self.transition, self.interval) if self.rotate else self.transition
+                    ),
                 },
                 blocking=False,
             )
@@ -287,11 +338,13 @@ class ColorFXCoordinator:
         try:
             while self.is_running:
                 await self._apply_step()
+                if not self.rotate:
+                    return
                 self._current_step += 1
                 await asyncio.sleep(self.interval)
         except asyncio.CancelledError:
             pass
-        except Exception as err:
-            _LOGGER.exception("Unexpected error in Color FX loop: %s", err)
+        except Exception:
+            _LOGGER.exception("Unexpected error in Color FX loop")
             self.is_running = False
             self._notify_listeners()

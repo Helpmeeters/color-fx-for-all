@@ -1,12 +1,13 @@
 """Select platform for choosing Color FX sequences."""
 
-from homeassistant.components.select import SelectEntity
+from homeassistant.components.select import DOMAIN as SELECT_DOMAIN, SelectEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import ColorFXCoordinator
+from .entity import ColorFXEntity
 
 
 async def async_setup_entry(
@@ -19,33 +20,15 @@ async def async_setup_entry(
     async_add_entities([ColorFXSequenceSelect(coordinator, entry)])
 
 
-class ColorFXSequenceSelect(SelectEntity):
+class ColorFXSequenceSelect(ColorFXEntity, SelectEntity):
     """Select entity for choosing the active Color FX sequence."""
 
-    _attr_has_entity_name = True
     _attr_icon = "mdi:palette-swatch"
+    _attr_name = "Sequence"
 
     def __init__(self, coordinator: ColorFXCoordinator, entry: ConfigEntry) -> None:
         """Initialize the select entity."""
-        self.coordinator = coordinator
-        self._entry = entry
-        self._attr_unique_id = f"{entry.entry_id}_sequence"
-        self._attr_name = "Sequence"
-        self._unregister_listener = None
-
-    async def async_added_to_hass(self) -> None:
-        """Register coordinator update listener."""
-        self._unregister_listener = self.coordinator.register_listener(self._handle_update)
-
-    async def async_will_remove_from_hass(self) -> None:
-        """Unregister coordinator listener."""
-        if self._unregister_listener:
-            self._unregister_listener()
-
-    @callback
-    def _handle_update(self) -> None:
-        """Update entity state from coordinator."""
-        self.async_write_ha_state()
+        super().__init__(coordinator, entry, SELECT_DOMAIN, "sequence", "_sequence")
 
     @property
     def options(self) -> list[str]:

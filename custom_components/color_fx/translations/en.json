@@ -2,15 +2,29 @@
   "config": {
     "step": {
       "user": {
-        "title": "Add Color FX Zone",
+        "title": "Add Color FX Hub",
         "description": "Configure a light group or room to run dynamic color sequence animations.",
         "data": {
-          "name": "Zone Name",
-          "target_light": "Target Light or Group",
+          "name": "Hub Name",
+          "target_light": "Target Lights or Groups",
           "sequence": "Default Sequence",
-          "interval": "Step Interval (seconds)",
-          "transition": "Transition Speed (seconds)",
+          "rotate": "Rotate colors",
+          "media_players": "Media Art Players",
           "restore_state": "Restore lighting on stop"
+        },
+        "data_description": {
+          "rotate": "Cycle through the sequence's colors. When off, the lights hold its most dominant color.",
+          "media_players": "Music, TV, or any other media players whose artwork the Media Art sequence follows. Leave empty to follow every media player."
+        },
+        "sections": {
+          "rotation": {
+            "name": "Color Rotation",
+            "description": "How quickly the lights move through the sequence's colors. Only used when Rotate colors is on.",
+            "data": {
+              "interval": "Step Interval (seconds)",
+              "transition": "Transition Speed (seconds)"
+            }
+          }
         }
       }
     }
@@ -18,12 +32,28 @@
   "options": {
     "step": {
       "init": {
-        "title": "Color FX Zone Options",
+        "title": "Color FX Hub Options",
         "data": {
+          "name": "Hub Name",
+          "target_light": "Target Lights or Groups",
           "sequence": "Active Sequence",
-          "interval": "Step Interval (seconds)",
-          "transition": "Transition Speed (seconds)",
+          "rotate": "Rotate colors",
+          "media_players": "Media Art Players",
           "restore_state": "Restore lighting on stop"
+        },
+        "data_description": {
+          "rotate": "Cycle through the sequence's colors. When off, the lights hold its most dominant color.",
+          "media_players": "Music, TV, or any other media players whose artwork the Media Art sequence follows. Leave empty to follow every media player."
+        },
+        "sections": {
+          "rotation": {
+            "name": "Color Rotation",
+            "description": "How quickly the lights move through the sequence's colors. Only used when Rotate colors is on.",
+            "data": {
+              "interval": "Step Interval (seconds)",
+              "transition": "Transition Speed (seconds)"
+            }
+          }
         }
       }
     }
